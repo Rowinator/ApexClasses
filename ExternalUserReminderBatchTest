@@ -1,0 +1,55 @@
+@isTest
+public class ExternalUserReminderBatchTest {
+
+    static testMethod void testExternalUserReminderBatch() {
+        // Create test User records
+        List<User> testUsers = new List<User>();
+        List <profile> partnerProfileId = [Select Id, Name from profile where name = 'System Administrator' Limit 1];
+        // Create User records that meet your batch criteria
+        // Make sure to set appropriate values for LastLoginDate, CreatedDate, and IsPortalEnabled
+        // Example:
+        testUsers.add(new User(
+            Username = 'testuser1rc@example.com',
+            Email = 'testuser1@example.com',
+            FirstName = 'TestExternalUserReminderBatch',
+            LastName = 'User1',
+            Alias = 'TU',
+            TimeZoneSidKey = 'GMT',
+            LocaleSidKey = 'en_US',
+            EmailEncodingKey = 'UTF-8',
+            LanguageLocaleKey = 'en_US', // Required field for users
+            ProfileId = partnerProfileId[0].Id, // Assign the Portal Profile
+            IsActive = true // You can set IsActive based on your requirements
+        ));
+        testUsers.add(new User(
+            Username = 'testuser2rc@example.com',
+            Email = 'testuser2@example.com',
+            FirstName = 'TestExternalUserReminderBatch',
+            LastName = 'User2',
+            Alias = 'TU',
+            TimeZoneSidKey = 'GMT',
+            LocaleSidKey = 'en_US',
+            EmailEncodingKey = 'UTF-8',
+            LanguageLocaleKey = 'en_US', // Required field for users
+            ProfileId = partnerProfileId[0].Id, // Assign the Portal Profile
+            IsActive = true // You can set IsActive based on your requirements
+        ));
+        // Add more test users as needed
+
+        insert testUsers;
+
+        // Start the test context
+        Test.startTest();
+
+        // Instantiate and execute the batch class
+        ExternalUserReminderBatch batchClass = new ExternalUserReminderBatch();
+        Database.executeBatch(batchClass);
+
+        // Stop the test context
+        Test.stopTest();
+
+        // Add assertions to verify the expected behavior of the batch class
+        // For example, check if emails were sent, users were deactivated, etc.
+        System.assertEquals(3, [SELECT Count() FROM EmailMessage], 'Expected number of emails to be sent');
+    }
+}
