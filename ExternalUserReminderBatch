@@ -1,0 +1,237 @@
+public class ExternalUserReminderBatch implements Database.Batchable<SObject> {
+    
+    // Instantiating list of users for deactivation
+    List<User> newUsersForEmailReminder = new List<User>();
+    List<User> existingUsersForEmailReminder = new List<User>();
+    List<User> usersForDeactivation = new List<User>();
+    
+    // Default Date Limits
+    Integer dayLimit1 = -30;
+    Integer dayLimit2 = -55;
+    Integer dayLimit3 = -60;
+    Integer dayLimit4 = -85;
+    
+    // Date variables to be populated by custom metadata
+    Date date1 = System.Today().addDays(dayLimit1);
+    Date date2 = System.Today().addDays(dayLimit2);
+    Date date3 = System.Today().addDays(dayLimit3);
+    Date date4 = System.Today().addDays(dayLimit4);
+    
+    // Start method to combine and execute the queries
+    public Database.QueryLocator start(Database.BatchableContext context) {
+        
+        // Custom Metadata Records
+        List<User_Login_Reminder_Setting__mdt> queueNameToRecordTypeList = [SELECT DeveloperName, Label, Day_Limit_1__c, Day_Limit_2__c, Day_Limit_3__c, Day_Limit_4__c 
+                                                                            FROM User_Login_Reminder_Setting__mdt 
+                                                                            WHERE DeveloperName = 'External_User_Login_Reminder' LIMIT 1];
+        
+        // Check if the query returned any records
+        if (!queueNameToRecordTypeList.isEmpty()) {
+            try {
+                dayLimit1 = -Integer.valueOf(queueNameToRecordTypeList[0].Day_Limit_1__c);
+                dayLimit2 = -Integer.valueOf(queueNameToRecordTypeList[0].Day_Limit_2__c);
+                dayLimit3 = -Integer.valueOf(queueNameToRecordTypeList[0].Day_Limit_3__c);
+                dayLimit4 = -Integer.valueOf(queueNameToRecordTypeList[0].Day_Limit_4__c);
+                
+                // Date variables updated with custom metadata
+                date1 = System.Today().addDays(dayLimit1);
+                date2 = System.Today().addDays(dayLimit2);
+                date3 = System.Today().addDays(dayLimit3);
+                date4 = System.Today().addDays(dayLimit4);
+            } catch (Exception e) {
+                // Handle the exception if the field values are not valid integers
+                System.debug('Error: Invalid integer value in Custom Metadata Type fields.');
+            }
+        } else {
+            System.debug('No records found.');
+        }
+        System.debug(dayLimit1);
+        System.debug(dayLimit2);
+        System.debug(dayLimit3);
+        System.debug(dayLimit4);
+        
+        // Is portal condition
+        String portalCondition = 'IsPortalEnabled = TRUE AND';
+        
+        // Test consideration
+        if(Test.isRunningTest()){
+            portalCondition = 'FirstName = \'Test\' OR';
+            date1 = System.Today();
+            date2 = System.Today();
+            date3 = System.Today();
+            date4 = System.Today();
+        }
+        
+        // Combine the three queries using a UNION statement
+        String combinedQuery = 'SELECT Id, Name, Email, LastLoginDate, CreatedDate ' +
+            'FROM User ' +
+            'WHERE ' + portalCondition +' ((LastLoginDate = NULL AND DAY_ONLY(CreatedDate) IN (:date1, :date2, :date3)) '+
+            'OR (LastLoginDate != NULL AND DAY_ONLY(CreatedDate) IN (:date1, :date3, :date4)))';
+        
+        List<User> userList = Database.query(combinedQuery);
+        System.debug(userList);
+        return Database.getQueryLocator(combinedQuery);
+    }
+    
+    // Execute method to process the records
+    public void execute(Database.BatchableContext context, List<SObject> scope) {
+        
+        // Custom Metadata Records
+        List<User_Login_Reminder_Setting__mdt> queueNameToRecordTypeList = [SELECT DeveloperName, Label, Day_Limit_1__c, Day_Limit_2__c, Day_Limit_3__c, Day_Limit_4__c 
+                                                                            FROM User_Login_Reminder_Setting__mdt 
+                                                                            WHERE DeveloperName = 'External_User_Login_Reminder' LIMIT 1];
+        
+        // Check if the query returned any records
+        if (!queueNameToRecordTypeList.isEmpty()) {
+            try {
+                dayLimit1 = -Integer.valueOf(queueNameToRecordTypeList[0].Day_Limit_1__c);
+                dayLimit2 = -Integer.valueOf(queueNameToRecordTypeList[0].Day_Limit_2__c);
+                dayLimit3 = -Integer.valueOf(queueNameToRecordTypeList[0].Day_Limit_3__c);
+                dayLimit4 = -Integer.valueOf(queueNameToRecordTypeList[0].Day_Limit_4__c);
+                
+                // Date variables updated with custom metadata
+                date1 = System.Today().addDays(dayLimit1);
+                date2 = System.Today().addDays(dayLimit2);
+                date3 = System.Today().addDays(dayLimit3);
+                date4 = System.Today().addDays(dayLimit4);
+            } catch (Exception e) {
+                // Handle the exception if the field values are not valid integers
+                System.debug('Error: Invalid integer value in Custom Metadata Type fields.');
+            }
+        } else {
+            System.debug('No records found.');
+        }
+        
+        // Test consideration
+        if(Test.isRunningTest()){
+            date1 = System.Today();
+            date2 = System.Today();
+            date3 = System.Today();
+            date4 = System.Today();
+        }
+        
+        System.debug(dayLimit1);
+        System.debug(dayLimit2);
+        System.debug(dayLimit3);
+        System.debug(dayLimit4);
+        
+        System.debug('inside Execute');
+        System.debug(dayLimit1);
+        System.debug(dayLimit2);
+        System.debug(dayLimit3);
+        System.debug(dayLimit4);
+        // Typecast the SObjects to User records
+        List<User> usersToProcess = (List<User>) scope;
+        System.debug(usersToProcess);
+        
+        // Email List
+        List<Messaging.SingleEmailMessage> emailMessages = new List<Messaging.SingleEmailMessage>();
+        
+        // Query orgWideEmailId
+        
+        String orgWideEmailName = 'Generac Sales';
+        String orgWideEmailId;
+        
+        OrgWideEmailAddress orgWideEmail = [SELECT Id FROM OrgWideEmailAddress WHERE DisplayName = :orgWideEmailName LIMIT 1];
+        orgWideEmailId = orgWideEmail.Id;
+        
+        //Email body variables
+        String FullName;
+        String DayVariable;
+        String dayLimit1String = String.valueOf(Math.abs(dayLimit1));
+        String dayLimit2String = String.valueOf(Math.abs(dayLimit2));
+        String dayLimit3String = String.valueOf(Math.abs(dayLimit3));
+        String dayLimit4String = String.valueOf(Math.abs(dayLimit4));
+        
+        // Separate users based on the criteria
+        for (User user : usersToProcess) {
+            
+            // Set FullName variable 
+            FullName = user.Name;
+            
+            // Date in GMT of users CreatedDate
+            Date createdDay = user.CreatedDate.dateGMT();
+            System.debug(FullName);
+            System.debug('userLastLoginDate='+ user.LastLoginDate);
+            System.debug('createdDay='+ createdDay);
+            System.debug('date1'+ date1);
+            System.debug('date2'+ date2);
+            System.debug('date3'+ date3);
+            System.debug('date4'+ date4);
+            
+            // A User has never logged in 30 or 55 days
+            if (user.LastLoginDate == Null && (createdDay == date1 || createdDay == date2)) {
+                System.debug('Inside 1'); 
+                newUsersForEmailReminder.add(User);
+                if(createdDay == date1){
+                    DayVariable = dayLimit1String;
+                }
+                else DayVariable = dayLimit2String;
+                // A User has logged in, but not in 30,60,85 Days   
+            } else if (user.LastLoginDate != Null && (createdDay == date1 || createdDay == date3 || createdDay == date4)) {
+                System.debug('Inside 2');
+                existingUsersForEmailReminder.add(User);
+                if(createdDay == date1){
+                    DayVariable = dayLimit1String;
+                }
+                else if(createdDay == date3){
+                    DayVariable = dayLimit3String;
+                } else DayVariable = dayLimit4String;
+                // A User that has never logged into Salesforce after 60 Days of creation
+            } else if (user.LastLoginDate == Null && createdDay == date3) {
+                System.debug('Inside 3');
+                usersForDeactivation.add(user);
+            }
+            System.debug(newUsersForEmailReminder);
+            System.debug(usersForDeactivation);
+            System.debug(existingUsersForEmailReminder);
+            
+            // Send email start
+            String emailBody = '<p><span style="font-size:9pt;">Hello ' + FullName + ',&nbsp;</span></p>' +
+                '<p><span style="font-size:9pt;">&nbsp;</span></p>' +
+                '<p><span style="font-size:9pt;">This is an automated email reminder that you have not logged in to your Generac Experience Cloud Partner Portal user account for ' + DayVariable + ' days. Your account will be automatically deactivated after 60 days of inactivity.&nbsp;</span></p>' +
+                '<p><span style="font-size:9pt;">&nbsp;</span></p>' +
+                '<p><span style="font-size:9pt;">&nbsp;You can login through&nbsp;</span><a href="https://partner-community.generac.com/login?locale=us"><u><span style="color:#0000ff;font-size:9pt;">Login | Partners (generac.com)</span></u></a><span style="font-size:9pt;">. If you have difficulty logging in, please contact&nbsp;</span><span style="color:#0000ff;font-size:9pt;">expcldsupport@generac.com</span><span style="font-size:9pt;">.</span></p>'+
+                '<p><span style="font-size:9pt;">&nbsp;</span></p>'+
+                '<p><span style="font-size:9pt;">Generac Experience Cloud Support</span></p>';
+            
+            Messaging.SingleEmailMessage email = new Messaging.SingleEmailMessage();
+            
+            // Set the org-wide email address as the "From" address
+            email.setOrgWideEmailAddressId(orgWideEmailId);
+            
+            // Set the recipient's email address
+            email.setToAddresses(new List<String>{user.Email});
+            
+            // Set the email subject
+            email.setSubject('Generac Experience Cloud Inactivity Reminder');
+            
+            // Set the email body (plain text or HTML)
+            email.setHtmlBody(emailBody);
+            
+            If (DayVariable != Null){
+                // Add email to list
+                emailMessages.add(email);
+            }
+            
+        }
+        
+        // Send the emails
+        Messaging.sendEmail(emailMessages);
+        // Send email end
+        
+        if (!usersForDeactivation.isEmpty()) {
+            for (User user : usersForDeactivation) {
+                user.IsActive = false;
+            }
+            //update usersForDeactivation;
+        } else {
+            System.debug('The list is empty.');
+        }
+    }
+    
+    // Finish method (optional)
+    public void finish(Database.BatchableContext context) {
+        // Perform any post-processing tasks if needed
+    }
+}
