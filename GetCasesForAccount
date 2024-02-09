@@ -1,0 +1,19 @@
+public class GetCasesForAccount {
+    @InvocableMethod(label='Get Cases for Account' description='Returns a list of cases for a given account Id')
+    public static List<List<Case>> getCasesList(List<String> accountIds) {
+        List<List<Case>> casesList = new List<List<Case>>();
+        Date last30Days = Date.today().addDays(-30);
+      
+        for(String accId : accountIds) {
+            List<Case> cases = [SELECT Id, AccountId, Subject, Status, Priority, CaseNumber, CreatedDate, ContactId, isClosed, Topic__c  
+                                FROM Case 
+                                WHERE AccountId = :accId and LastModifiedDate >= :last30Days
+                                ORDER BY LastModifiedDate DESC
+                                Limit 100
+                               ]; 
+            casesList.add(cases);
+        }
+        
+        return casesList;
+    }
+}
