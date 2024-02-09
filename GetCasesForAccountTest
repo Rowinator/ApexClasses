@@ -1,0 +1,63 @@
+@isTest
+public class GetCasesForAccountTest {
+    @isTest
+    static void testGetCasesList() {
+        // Create test data
+        Account acc = new Account(Name = 'Test Account');
+        insert acc;
+        
+        // Create test cases
+        Case closedCase = new Case(AccountId = acc.Id, Subject = 'Closed Case', Status = 'Closed', Priority = 'High', CreatedDate = Date.today(), Topic__c = 'Events');
+        Case openCase = new Case(AccountId = acc.Id, Subject = 'Open Case', Status = 'Open', Priority = 'Medium', CreatedDate = Date.today(), Topic__c = 'Events');
+        Case eventCase = new Case(AccountId = acc.Id, Subject = 'Event Case', Status = 'Open', Priority = 'Low', CreatedDate = Date.today(), Topic__c = 'Events');
+        insert new List<Case>{closedCase, openCase, eventCase};
+        
+        // Invoke the method to test
+        Test.startTest();
+        List<String> accountIds = new List<String>{acc.Id};
+        List<List<Case>> result = GetCasesForAccount.getCasesList(accountIds);
+        Test.stopTest();
+        
+        // Verify the result
+        System.assertEquals(1, result.size(), 'Expected only one list of cases');
+        List<Case> cases = result[0];
+        System.assertEquals(3, cases.size(), 'Expected 3 cases');
+        
+        // Verify if the cases are correctly filtered
+        for (Case c : cases) {
+            System.assertEquals(acc.Id, c.AccountId, 'Case does not belong to the correct account');
+            System.assertNotEquals(null, c.Subject, 'Case Subject is null');
+        }
+    }
+    
+    @isTest
+    static void testGetCasesListTopic() {
+        // Create test data
+        Account acc = new Account(Name = 'Test Account');
+        insert acc;
+        
+        // Create test cases with different topics
+        Case eventCase1 = new Case(AccountId = acc.Id, Subject = 'Event Case 1', Status = 'Open', Priority = 'High', CreatedDate = Date.today(), Topic__c = 'Events');
+        Case eventCase2 = new Case(AccountId = acc.Id, Subject = 'Event Case 2', Status = 'Open', Priority = 'Medium', CreatedDate = Date.today(), Topic__c = 'Events');
+        Case otherCase = new Case(AccountId = acc.Id, Subject = 'Other Case', Status = 'Open', Priority = 'Low', CreatedDate = Date.today(), Topic__c = '');
+        insert new List<Case>{eventCase1, eventCase2, otherCase};
+        
+        // Invoke the method to test
+        Test.startTest();
+        List<String> accountIds = new List<String>{acc.Id};
+        List<List<Case>> result = GetCasesForAccountTopic.getCasesList(accountIds);
+        Test.stopTest();
+        
+        // Verify the result
+        System.assertEquals(1, result.size(), 'Expected only one list of cases');
+        List<Case> cases = result[0];
+        System.assertEquals(2, cases.size(), 'Expected 2 cases');
+        
+        // Verify if the cases are correctly filtered
+        for (Case c : cases) {
+            System.assertEquals(acc.Id, c.AccountId, 'Case does not belong to the correct account');
+            System.assertNotEquals(null, c.Subject, 'Case Subject is null');
+            System.assertEquals('Events', c.Topic__c, 'Case does not have the correct topic');
+        }
+    }
+}
